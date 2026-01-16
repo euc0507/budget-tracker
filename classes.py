@@ -1,6 +1,7 @@
 
 
-class Tag:
+class Category:
+    transactions = []
     def __init__(self, name, limit=0):
         self.name = name
         self.limit = limit
@@ -9,3 +10,6 @@ class Tag:
 
     def change_balance(self, amount):
         self.balance = self.limit - amount
+
+def log_transaction(category, amount, description=""):
+    return {"category":category, "amount":amount, "description":description}
