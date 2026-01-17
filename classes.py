@@ -11,5 +11,5 @@ class Category:
     def change_balance(self, amount):
         self.balance = self.limit - amount
 
-def log_transaction(category, amount, description=""):
-    return {"category":category, "amount":amount, "description":description}
+def log_transaction(category, amount, date_time,description=""):
+    return {"category":category, "amount":amount, "description":description, "time":date_time}

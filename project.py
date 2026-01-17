@@ -1,8 +1,7 @@
 import sys
 import csv
+import datetime
 from classes import Category, log_transaction
-
-
 
 
 #list to store all categories    
@@ -37,8 +36,10 @@ def record_expense(transactions):
         amount = int(input("Amount: "))
         description = input("Description (Optional):")
         target_category.change_balance(amount)
-        new_transaction = log_transaction(category_name, amount, description)
+        time_of_transaction = datetime.datetime.now()
+        new_transaction = log_transaction(category_name, amount, time_of_transaction, description)
         transactions.append(new_transaction)
+        
     else:
         print("Category not found")
         return
@@ -66,7 +67,11 @@ def main():
             record_expense(transactions)
 
         elif response == "4":
-            pass
+            for transaction in transactions:
+                print(f"You spent {transaction["amount"]} from your {transaction["category"]} budget")
+                if transaction["description"]:
+                    print(f"on {transaction["description"]}")
+                    print(f"Date: {transaction["time"]}")
 
         elif response == "5":
             sys.exit("Goodbye!")
