@@ -6,10 +6,14 @@ class Category:
         self.name = name
         self.limit = limit
         self.balance = limit
+        self.total_spent = 0
 
 
     def change_balance(self, amount):
-        self.balance = self.limit - amount
+        self.balance = self.balance - amount
+        self.total_spent += amount
 
-def log_transaction(category, amount, date_time,description=""):
-    return {"category":category, "amount":amount, "description":description, "time":date_time}
+    def balance_percentage(self):
+        return self.total_spent/self.limit * 100
+
+
