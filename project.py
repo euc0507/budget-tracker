@@ -20,14 +20,14 @@ def add_new_category(categories):
     else:
         while True:
             try:
-                limit = float(input("Category limit: "))
+                limit = float(input("Category limit: $"))
             except ValueError:
                 print("Invalid input. Please enter a positive number")
                 input("Press Enter to continue: ")
                 continue
             new_category = Category(name, limit)
             categories.append(new_category)
-            print(f"Category {name} with limit {limit:.2f} created.")
+            print(f"Category {name} with limit ${limit:.2f} created.")
             input("Press Enter to continue: ")
             break
 
@@ -51,7 +51,7 @@ def record_expense(transactions):
         else:
             print("Category not found")
             input("Press Enter to continue: ")
-            continue
+            break
     
 def log_transaction(category, amount, date_time,description=""):
     return {"category":category, "amount":amount, "description":description, "time":date_time}
