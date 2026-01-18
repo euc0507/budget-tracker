@@ -34,11 +34,20 @@ def add_new_category(categories):
             input("Press Enter to continue: ")
             break
 
-def total_spent(categories):
-    return sum(category.total_spent for category in categories)
 
 def total_limit(categories):
     return sum(category.limit for category in categories)
+
+def total_spent_in_category(category, transactions):
+    return sum(t["amount"] for t in transactions if t["category"].lower() == category.name.lower())
+
+def compute_balance(category, transactions):
+    return category.limit - total_spent_in_category(category, transactions)
+
+def balance_percentage(category, transactions):
+    spent = total_spent_in_category(category, transactions)
+    return (spent / category.limit * 100) if category.limit else 0
+
 
 def read_categories_from_file(filename="categories.csv"):
     try:
@@ -47,11 +56,7 @@ def read_categories_from_file(filename="categories.csv"):
             for row in reader:
                 name = row["name"]
                 limit = float(row["limit"])
-                balance = float(row["balance"])
-                total_spent = float(row["total_spent"])
                 category = Category(name, limit)
-                category.balance = balance
-                category.total_spent = total_spent
                 categories.append(category)
     except FileNotFoundError:
         pass
@@ -59,15 +64,13 @@ def read_categories_from_file(filename="categories.csv"):
 
 def write_categories_to_file(filename="categories.csv"):
     with open(filename, "w", newline="") as file:
-        fieldnames = ["name", "limit", "balance", "total_spent"]
+        fieldnames = ["name", "limit"]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         for category in categories:
             writer.writerow({
                 "name": category.name,
                 "limit": category.limit,
-                "balance": category.balance,
-                "total_spent": category.total_spent
             })
 
 
@@ -76,8 +79,8 @@ transactions = []
 #Transactions related functions
 def record_expense(transactions):
     while True:
-        category_name=input("Category: ")
-        target_category = next((category for category in categories if category.name.lower() == category_name.lower()), None)
+        category_name=input("Category: ").strip().lower()
+        target_category = next((category for category in categories if category.name.lower() == category_name), None)
         if target_category:
             while True:
                 try:
@@ -89,12 +92,17 @@ def record_expense(transactions):
                     print("Invalid amount")
                     continue
             description = input("Description (Optional): ")
-            target_category.change_balance(amount)
             time_of_transaction = datetime.datetime.now()
             new_transaction = log_transaction(category_name, amount, time_of_transaction, description)
             transactions.append(new_transaction)
-            target_category.transactions.append(new_transaction)
-            print(f"Recorded expense of ${amount:.2f} from {category_name} category.")
+            print(f"Recorded expense of ${amount:.2f} from category {category_name}.")
+            balance = compute_balance(target_category, transactions)
+            print(f"You have ${balance:.2f} remaining in your {category_name} budget.")
+            percent = balance_percentage(target_category, transactions)
+            if percent >= 100:
+                print(f"⚠️  Alert: You have exceeded your budget for {category_name}!")
+            elif percent >= 80:
+                print(f"⚠️  Warning: You have used {percent:.0f}% of your budget for {category_name}!")
             input("Press Enter to continue: ")
             return
             
@@ -104,8 +112,12 @@ def record_expense(transactions):
             break
     
 def log_transaction(category, amount, date_time,description=""):
-    return {"category":category, "amount":amount, "description":description, "time":date_time}
-
+    return {
+        "category":category, 
+        "amount":amount, 
+        "description":description, 
+        "time":date_time
+        }
 
 #main
 def main():
@@ -125,8 +137,10 @@ def main():
         elif response == "2":
             if categories:
                 for category in categories:
-                    print(f"-{category.name}: Remaining balance is ${category.balance:.2f}")
-                    print(f"You have used {category.balance_percentage()}% of your {category.name} budget for this month")
+                    balance = compute_balance(category, transactions)
+                    percent = balance_percentage(category, transactions)
+                    print(f"-{category.name}: ${balance:.2f} remaining out of ${category.limit:.2f}")
+                    print(f"You have used {percent:.0f}% of your budget for {category.name}")
                 input("Press Enter to continue: ")
             else:
                 print("No categories have been created")
@@ -148,8 +162,8 @@ def main():
                 input("Press Enter to continue: ")
 
         elif response == "5":
-            total = total_spent(categories)
-            print(f"You have spent a total of ${total:.2f} out of ${total_limit(categories):.2f} across all categories")
+            total = sum(t["amount"] for t in transactions)
+            print(f"You have spent a total of ${total:.2f} out of ${total_limit(categories):.2f}")
             print(f"You have ${total_limit(categories) - total:.2f} remaining")
             input("Press Enter to continue: ")
 
