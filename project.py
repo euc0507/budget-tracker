@@ -82,6 +82,9 @@ def edit_category(categories):
 
 
 def total_limit(categories):
+    """
+    Calculate the combined spending limit across all categories that the user has created.
+    """
     return sum(category.limit for category in categories)
 
 def total_spent_in_category(category, transactions):
@@ -124,6 +127,10 @@ def write_categories_to_file(filename="categories.csv"):
 transactions = []
 #Transactions related functions
 def write_transactions_to_file(filename="transactions.csv"):
+    """
+    Writes all transactions to a CSV file.
+    This function runs at the end of the program to save all recorded transactions.
+    """
     with open(filename, "w", newline="") as file:
         fieldnames = ["category", "amount", "description", "time"]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
@@ -137,6 +144,10 @@ def write_transactions_to_file(filename="transactions.csv"):
             })
 
 def read_transactions_from_file(filename="transactions.csv"):
+    """
+    Reads transactions from a CSV file and populates the transactions list.
+    This function runs at the start of the program to load previously recorded transactions.
+    """
     try:
         with open(filename, "r") as file:
             reader = csv.DictReader(file)
@@ -152,6 +163,14 @@ def read_transactions_from_file(filename="transactions.csv"):
 
 
 def record_expense(transactions):
+    """
+    Prompts the user to record a new transaction
+    - Asks the user to select category, either by name or number
+    - Prompts the user for amount spent and optional description
+    - Validates input
+    - Stores transaction in transaction list, with timestamp
+    - Displays updated balance and warnings if limits are approached or exceeded
+    """
     while True:
         enumerated_categories = {i+1: cat for i, cat in enumerate(categories)}
         print("\nAvailable categories:")
@@ -201,6 +220,9 @@ def record_expense(transactions):
             break
     
 def log_transaction(category, amount, date_time,description=""):
+    """
+    Returns transaction as a dictionary
+    """
     return {
         "category":category, 
         "amount":amount, 
@@ -209,9 +231,15 @@ def log_transaction(category, amount, date_time,description=""):
         }
 
 def transactions_by_category(transactions, category_name):
+    """
+    Returns transactions filtered by category name
+    """
     return [t for t in transactions if t["category"].lower() == category_name.lower()]
 
 def tabulate_transactions(transactions):
+    """
+    Displays transactions formatted into a table, using tabulate library
+    """
     table = []
     for t in transactions:
         table.append([
@@ -225,6 +253,12 @@ def tabulate_transactions(transactions):
 
 #main
 def main():
+    """
+    Main program loop
+    - Loads categories and transactions from files
+    - Displays menu and prompts user for actions
+    - On exit, saves categories and transactions to files
+    """
     read_categories_from_file()
     read_transactions_from_file()
     while True:

@@ -1,4 +1,8 @@
+"""
+Domain models for the budget tracker.
 
+Contains the Category class and related logic.
+"""
 
 class Category:
     def __init__(self, name, limit=0):
