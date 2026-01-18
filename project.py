@@ -1,11 +1,10 @@
 import sys
-import csv 
 import datetime
 from colorama import init, Fore, Style
 init(autoreset=True)
 from tabulate import tabulate
 from classes import Category
-from storage import export_transactions
+from storage import log_transaction,read_transactions_from_file, write_transactions_to_file, read_categories_from_file, write_categories_to_file
 
 
 #list to store all categories    
@@ -88,7 +87,7 @@ def total_limit(categories):
     return sum(category.limit for category in categories)
 
 def total_spent_in_category(category, transactions):
-    return sum(t["amount"] for t in transactions if t["category"].lower() == category.name.lower())
+    return sum(t["amount"] for t in transactions if t["category_id"] == category.id)
 
 def compute_balance(category, transactions):
     return category.limit - total_spent_in_category(category, transactions)
@@ -98,70 +97,9 @@ def balance_percentage(category, transactions):
     return (spent / category.limit * 100) if category.limit else 0
 
 
-def read_categories_from_file(filename="categories.csv"):
-    try:
-        with open(filename, "r") as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                name = row["name"]
-                limit = float(row["limit"])
-                category = Category(name, limit)
-                categories.append(category)
-    except FileNotFoundError:
-        pass
-
-
-def write_categories_to_file(filename="categories.csv"):
-    with open(filename, "w", newline="") as file:
-        fieldnames = ["name", "limit"]
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-        for category in categories:
-            writer.writerow({
-                "name": category.name,
-                "limit": category.limit,
-            })
-
-
 #list to store transactions
 transactions = []
 #Transactions related functions
-def write_transactions_to_file(filename="transactions.csv"):
-    """
-    Writes all transactions to a CSV file.
-    This function runs at the end of the program to save all recorded transactions.
-    """
-    with open(filename, "w", newline="") as file:
-        fieldnames = ["category", "amount", "description", "time"]
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-        for transaction in transactions:
-            writer.writerow({
-                "category": transaction["category"],
-                "amount": transaction["amount"],
-                "description": transaction["description"],
-                "time": transaction["time"].strftime("%Y-%m-%d %H:%M:%S"),
-            })
-
-def read_transactions_from_file(filename="transactions.csv"):
-    """
-    Reads transactions from a CSV file and populates the transactions list.
-    This function runs at the start of the program to load previously recorded transactions.
-    """
-    try:
-        with open(filename, "r") as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                category = row["category"]
-                amount = float(row["amount"])
-                description = row["description"]
-                time_of_transaction = datetime.datetime.strptime(row["time"], "%Y-%m-%d %H:%M:%S")
-                transaction = log_transaction(category, amount, time_of_transaction, description)
-                transactions.append(transaction)
-    except FileNotFoundError:
-        pass
-
-
 def record_expense(transactions):
     """
     Prompts the user to record a new transaction
@@ -201,7 +139,7 @@ def record_expense(transactions):
                     continue
             description = input("Description (Optional): ")
             time_of_transaction = datetime.datetime.now()
-            new_transaction = log_transaction(category_name, amount, time_of_transaction, description)
+            new_transaction = log_transaction(target_category.id, amount, time_of_transaction, description)
             transactions.append(new_transaction)
             print(Fore.GREEN + f"\nRecorded transaction of ${amount:.2f} from category {category_name}.")
             balance = compute_balance(target_category, transactions)
@@ -219,22 +157,12 @@ def record_expense(transactions):
             input(Fore.YELLOW + "\nPress Enter to continue: ")
             break
     
-def log_transaction(category, amount, date_time,description=""):
-    """
-    Returns transaction as a dictionary
-    """
-    return {
-        "category":category, 
-        "amount":amount, 
-        "description":description, 
-        "time":date_time
-        }
 
-def transactions_by_category(transactions, category_name):
+def transactions_by_category(transactions, category_obj):
     """
     Returns transactions filtered by category name
     """
-    return [t for t in transactions if t["category"].lower() == category_name.lower()]
+    return [t for t in transactions if t["category_id"] == category_obj.id]
 
 def tabulate_transactions(transactions):
     """
@@ -242,11 +170,14 @@ def tabulate_transactions(transactions):
     """
     table = []
     for t in transactions:
+        # lookup category by ID
+        category_obj = next((c for c in categories if c.id == t["category_id"]), None)
+        category_name = category_obj.name if category_obj else "Unknown"
         table.append([
-            t["category"],
+            category_name,
             f"${t['amount']:.2f}",
-            t["description"] if t["description"] else "N/A",
-            t["time"].strftime("%Y-%m-%d %H:%M:%S")
+            t['description'] if t['description'] else "N/A",
+            t['time'].strftime("%Y-%m-%d %H:%M:%S")
         ])
     headers = ["Category", "Amount", "Description", "Time"]
     print(tabulate(table, headers, tablefmt="grid"))
@@ -259,8 +190,16 @@ def main():
     - Displays menu and prompts user for actions
     - On exit, saves categories and transactions to files
     """
-    read_categories_from_file()
-    read_transactions_from_file()
+    global categories
+    categories.clear()
+    categories.extend(read_categories_from_file())
+
+    #Set the value for the ID of the next category to be created, based on existing categories
+    Category.next_id = max((category.id for category in categories), default=0) + 1
+
+    global transactions
+    transactions.clear()
+    transactions.extend(read_transactions_from_file())
     while True:
         print("\nWelcome! What would you like to do?")
         print("1) Create a category")
@@ -311,8 +250,9 @@ def main():
                     for category in categories:
                         print(f"- {category.name}")
                     category_name = input("Enter the category name: ").strip().lower()
-                    filtered_transactions = transactions_by_category(transactions, category_name)
-                    if filtered_transactions:
+                    selected_category = next((category for category in categories if category.name.lower() == category_name), None)
+                    if selected_category:
+                        filtered_transactions = transactions_by_category(transactions, selected_category)
                         print()
                         tabulate_transactions(filtered_transactions)
                         input(Fore.YELLOW + "\nPress Enter to continue: ")
@@ -332,15 +272,14 @@ def main():
 
         elif response == "7":
             if transactions:
-                export_transactions(transactions)
                 input(Fore.YELLOW + "Press Enter to continue: ")
             else:
                 print(Fore.RED + "You have no transactions to export")
                 input(Fore.YELLOW + "Press Enter to continue: ")
 
         elif response == "8":
-            write_categories_to_file()
-            write_transactions_to_file()
+            write_categories_to_file(categories)
+            write_transactions_to_file(transactions)
             sys.exit(Fore.GREEN + "Goodbye!")
 
         else:

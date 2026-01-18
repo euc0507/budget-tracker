@@ -1,20 +1,81 @@
 from classes import Category
+import datetime
 import csv
-def export_transactions(transactions=[], filename="transactions.csv"):
+
+def read_transactions_from_file(filename="transactions.csv"):
+    """
+    Reads transactions from a CSV file and populates the transactions list.
+    This function runs at the start of the program to load previously recorded transactions.
+    """
+    try:
+        transactions = []
+        with open(filename, "r") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                category = int(row["category_id"])
+                amount = float(row["amount"])
+                description = row["description"]
+                time_of_transaction = datetime.datetime.strptime(row["time"], "%Y-%m-%d %H:%M:%S")
+                transaction = log_transaction(category, amount, time_of_transaction, description)
+                transactions.append(transaction)
+    except FileNotFoundError:
+        pass
+    return transactions
+
+
+def write_transactions_to_file(transactions,filename="transactions.csv"):
+    """
+    Writes all transactions to a CSV file.
+    This function runs at the end of the program to save all recorded transactions.
+    """
     with open(filename, "w", newline="") as file:
-        writer = csv.DictWriter(
-            file,
-            fieldnames=["category", "amount", "description", "time"]
-        )
+        fieldnames = ["category_id", "amount", "description", "time"]
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
-        for t in transactions:
+        for transaction in transactions:
             writer.writerow({
-                "category": t["category"],
-                "amount": t["amount"],
-                "description": t["description"],
-                "time": t["time"].isoformat()
+                "category_id": transaction["category_id"],
+                "amount": transaction["amount"],
+                "description": transaction["description"],
+                "time": transaction["time"].strftime("%Y-%m-%d %H:%M:%S"),
             })
-    
-    print(f"Transactions exported to {filename}")
+
+def log_transaction(category_id, amount, date_time,description=""):
+    """
+    Returns transaction as a dictionary
+    """
+    return {
+        "category_id": category_id,
+        "amount": amount,
+        "description": description,
+        "time": date_time
+    }
+
+#Categories storage functions
+def read_categories_from_file(filename="categories.csv"):
+    categories = []
+    try:
+        with open(filename, "r") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                name = row["name"]
+                limit = float(row["limit"])
+                id = int(row["id"])
+                category = Category(name, limit, _id=id)
+                categories.append(category)
+    except FileNotFoundError:
+        pass
+    return categories
 
 
+def write_categories_to_file(categories,filename="categories.csv"):
+    with open(filename, "w", newline="") as file:
+        fieldnames = ["name", "limit", "id"]
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        for category in categories:
+            writer.writerow({
+                "name": category.name,
+                "limit": category.limit,
+                "id": category.id
+            })
