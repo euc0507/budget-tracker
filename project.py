@@ -256,9 +256,8 @@ def main():
         print("4) Record a transaction")
         print("5) View transactions")
         print("6) View total spent")
-        print("7) Export transactions")
-        print("8) Exit")
-        response = input("Choose an option (1-8): ")
+        print("7) Exit")
+        response = input("Choose an option (1-7): ")
         if response == "1":
             add_new_category(categories)
         elif response == "2":
@@ -320,13 +319,6 @@ def main():
             input(Fore.YELLOW + "\nPress Enter to continue: ")
 
         elif response == "7":
-            if transactions:
-                input(Fore.YELLOW + "Press Enter to continue: ")
-            else:
-                print(Fore.RED + "You have no transactions to export")
-                input(Fore.YELLOW + "Press Enter to continue: ")
-
-        elif response == "8":
             write_categories_to_file(categories)
             write_transactions_to_file(transactions)
             sys.exit(Fore.GREEN + "Goodbye!")
