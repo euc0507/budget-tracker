@@ -1,4 +1,6 @@
+from fileinput import filename
 import sys
+import os
 import datetime
 from colorama import init, Fore, Style
 init(autoreset=True)
@@ -6,6 +8,49 @@ from tabulate import tabulate
 from classes import Category
 from storage import log_transaction,read_transactions_from_file, write_transactions_to_file, read_categories_from_file, write_categories_to_file
 
+#Monthly tracking functions
+def get_current_month(current_period):
+    months = {
+        "01": "January",
+        "02": "February",
+        "03": "March",
+        "04": "April",
+        "05": "May",
+        "06": "June",
+        "07": "July",
+        "08": "August",
+        "09": "September",
+        "10": "October",
+        "11": "November",
+        "12": "December"
+    }
+    year, month = current_period.split("-")
+    month_name = months.get(month)
+    return f"{month_name} {year}"
+
+
+def get_current_period(filename="current_period.txt"):
+    now_month = datetime.datetime.now().strftime("%Y-%m")
+    if not os.path.exists(filename):
+        # First run ever
+        with open(filename, "w") as f:
+            f.write(now_month)
+        return now_month
+
+    with open(filename, "r") as f:
+        last_period = f.read().strip()
+
+    if last_period != now_month:
+        # New month started
+        with open(filename, "w") as f:
+            f.write(now_month)
+        print(f"\n🎉 New month detected! Starting a new tracking period: {now_month}")
+    return now_month
+
+
+def transactions_for_period(transactions, period):
+    return [t for t in transactions if t["period"] == period]
+        
 
 #list to store all categories    
 categories = []
@@ -100,7 +145,7 @@ def balance_percentage(category, transactions):
 #list to store transactions
 transactions = []
 #Transactions related functions
-def record_expense(transactions):
+def record_expense(transactions, current_period):
     """
     Prompts the user to record a new transaction
     - Asks the user to select category, either by name or number
@@ -190,6 +235,7 @@ def main():
     - Displays menu and prompts user for actions
     - On exit, saves categories and transactions to files
     """
+    current_period = get_current_period()
     global categories
     categories.clear()
     categories.extend(read_categories_from_file())
@@ -201,7 +247,9 @@ def main():
     transactions.clear()
     transactions.extend(read_transactions_from_file())
     while True:
-        print("\nWelcome! What would you like to do?")
+        print(f"\nTracking budget for {Fore.GREEN}{get_current_month(current_period)}")
+        print("Welcome! What would you like to do?")
+        print(Fore.GREEN + "------------------------------------------")
         print("1) Create a category")
         print("2) Edit category")
         print("3) View category balances")
@@ -222,8 +270,8 @@ def main():
         elif response == "3":
             if categories:
                 for category in categories:
-                    balance = compute_balance(category, transactions)
-                    percent = balance_percentage(category, transactions)
+                    balance = compute_balance(category, transactions_for_period(transactions, current_period))
+                    percent = balance_percentage(category, transactions_for_period(transactions, current_period))
                     print(f"\n-{category.name}: ${balance:.2f} remaining out of ${category.limit:.2f}")
                     print(f"You have used {percent:.0f}% of your budget for {category.name}")
                 input(Fore.YELLOW + "\nPress Enter to continue: ")
@@ -232,7 +280,7 @@ def main():
                 input(Fore.YELLOW + "Press Enter to continue: ")
 
         elif response == "4":
-            record_expense(transactions)
+            record_expense(transactions, current_period)
 
         elif response == "5":
             if transactions:
@@ -265,7 +313,8 @@ def main():
                 input(Fore.YELLOW + "Press Enter to continue: ")
 
         elif response == "6":
-            total = sum(t["amount"] for t in transactions)
+            period_tx = transactions_for_period(transactions, current_period)
+            total = sum(t["amount"] for t in period_tx)
             print(f"\nYou have spent a total of ${total:.2f} out of ${total_limit(categories):.2f}")
             print(f"You have ${total_limit(categories) - total:.2f} remaining")
             input(Fore.YELLOW + "\nPress Enter to continue: ")
