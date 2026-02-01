@@ -64,15 +64,6 @@ Transactions are stored as structured dictionaries containing category IDs, amou
 
 ---
 
-## What I Learned
-
-- Designing data models that remain stable as features evolve  
-- Managing persistent state in a CLI application  
-- Writing testable financial logic  
-- Structuring a medium-sized Python project across multiple modules  
-
----
-
 ## Future Improvements
 
 - Add data visualization
